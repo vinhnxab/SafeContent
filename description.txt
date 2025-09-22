@@ -1,0 +1,11 @@
+
+## Mô tả ngắn
+SafeContent: Lọc nội dung xấu độc hại trên nền tảng video Youtube theo từ khóa.
+
+## Mô tả dài
+SafeContent giúp bạn loại bỏ video nội dung xấu độc hại trên YouTube, bao gồm:
+- Video review công nghiệp, spam hàng loạt
+- Video AI voice, AI generated
+- Nội dung gây hại cho nhà sáng tạo
+
+Mọi xử lý đều chạy cục bộ, không thu thập dữ liệu.

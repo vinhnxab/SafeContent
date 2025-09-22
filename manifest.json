@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "SafeContent",
+  "version": "1.0",
+  "description": "Lọc nội dung chất lượng cao trên nền tảng video Youtube theo từ khóa. Bảo vệ trẻ em khỏi nội dung xấu độc hại",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
+}
