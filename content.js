@@ -1,4 +1,4 @@
-// Anti-FactoryTube v1.1 content script
+// SafeContent v1.1 content script
 const SELECTORS = [
   "ytd-video-renderer",
   "ytd-grid-video-renderer",
@@ -77,7 +77,7 @@ function hideElement(item){
   const parent = item.parentElement;
   const next = item.nextSibling;
   recentlyHidden.push({id: Date.now() + Math.random(), el: item, parent: parent, next: next, isShorts: isShorts});
-  item.dataset.antifactoryHidden = "1";
+  item.dataset.safecontentHidden = "1";
   
   if (isShorts) {
     // Special animation for Shorts - faster and more subtle
@@ -108,7 +108,7 @@ function processOnce(){
   for(const sel of SELECTORS){
     const items = document.querySelectorAll(sel);
     items.forEach(item => {
-      if(item.dataset.antifactoryHidden === "1") return;
+      if(item.dataset.safecontentHidden === "1") return;
 
       let title = "";
       let channel = "";
@@ -156,7 +156,7 @@ function undoLast(n=1){
       const el = rec.el;
       el.style.display = "";
       el.style.opacity = "1";
-      delete el.dataset.antifactoryHidden;
+      delete el.dataset.safecontentHidden;
       // try to reinsert at stored position
       if(rec.parent){
         if(rec.next && rec.next.parentElement === rec.parent){
@@ -182,8 +182,8 @@ function addKeyword(k){
 
 // Observe and process
 const observer = new MutationObserver((mutations) => {
-  clearTimeout(window._aft_debounce);
-  window._aft_debounce = setTimeout(()=> {
+  clearTimeout(window._sc_debounce);
+  window._sc_debounce = setTimeout(()=> {
     loadSettings(processOnce);
   }, 150);
 });

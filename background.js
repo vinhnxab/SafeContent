@@ -1,13 +1,13 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: "aft_add_channel",
-    title: "Anti-FactoryTube: Add this channel to blacklist",
+    id: "sc_add_channel",
+    title: "SafeContent: Add this channel to blacklist",
     contexts: ["page", "selection", "link"]
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if(info.menuItemId === "aft_add_channel" && tab){
+  if(info.menuItemId === "sc_add_channel" && tab){
     try{
       // Try to extract channel name from page by executing script
       const [{result}] = await chrome.scripting.executeScript({
@@ -38,14 +38,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         chrome.notifications?.create?.({
           type: "basic",
           iconUrl: "icons/icon48.png",
-          title: "Anti-FactoryTube",
+          title: "SafeContent",
           message: `Added "${channelName}" to blacklist`
         });
       } else {
         chrome.notifications?.create?.({
           type: "basic",
           iconUrl: "icons/icon48.png",
-          title: "Anti-FactoryTube",
+          title: "SafeContent",
           message: "Could not detect channel name on this page."
         });
       }
