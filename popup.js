@@ -1,62 +1,113 @@
+const DEFAULTS = {
+  keywords: [
+    "AI review","AI voice","AI movie","review phim AI","giọng đọc AI","video AI",
+    "AI generated","AI narration","AI storytelling","phim tóm tắt AI",
+    "AI recap","AI script","AI film","AI dubbing","tóm tắt phim AI"
+  ],
+  blockByTitle: true,
+  blockByChannel: true,
+  blockByDescription: false,
+  enabled: true,
+  useRegex: false
+};
 
-document.addEventListener("DOMContentLoaded", () => {
-  const runButton = document.getElementById("run");
-  
-  if (runButton) {
-    runButton.addEventListener("click", async () => {
-      try {
-        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-        
-        if (!tab.url.includes('youtube.com')) {
-          alert("Vui lòng mở YouTube trước khi sử dụng extension này!");
-          return;
-        }
-        
-        // Execute the content filtering function
-        await chrome.scripting.executeScript({
-          target: {tabId: tab.id},
-          function: () => {
-            // Re-run the content filtering
-            if (typeof hideSafeContent === 'function') {
-              hideSafeContent();
-            }
-            
-            // Show feedback to user
-            const notification = document.createElement('div');
-            notification.textContent = 'Đã lọc lại YouTube!';
-            notification.style.cssText = `
-              position: fixed;
-              top: 20px;
-              right: 20px;
-              background: #4CAF50;
-              color: white;
-              padding: 10px 20px;
-              border-radius: 5px;
-              z-index: 10000;
-              font-family: Arial, sans-serif;
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-              notification.remove();
-            }, 3000);
-          }
-        });
-        
-        // Update button text temporarily
-        const originalText = runButton.textContent;
-        runButton.textContent = "Đã lọc!";
-        runButton.disabled = true;
-        
-        setTimeout(() => {
-          runButton.textContent = originalText;
-          runButton.disabled = false;
-        }, 2000);
-        
-      } catch (error) {
-        console.error("SafeContent: Error executing script", error);
-        alert("Có lỗi xảy ra khi lọc nội dung. Vui lòng thử lại!");
+function getSettings(cb){
+  chrome.storage.sync.get(Object.keys(DEFAULTS), (res) => {
+    const s = {...DEFAULTS, ...res};
+    cb(s);
+  });
+}
+
+function saveSettings(settings, cb){
+  chrome.storage.sync.set(settings, cb);
+}
+
+function populate(){
+  getSettings((s) => {
+    document.getElementById("keywords").value = (s.keywords || []).join("\n");
+    document.getElementById("useRegex").checked = !!s.useRegex;
+    document.getElementById("blockTitle").checked = !!s.blockByTitle;
+    document.getElementById("blockChannel").checked = !!s.blockByChannel;
+    document.getElementById("blockDesc").checked = !!s.blockByDescription;
+    document.getElementById("enabled").checked = !!s.enabled;
+  });
+}
+
+document.getElementById("save").addEventListener("click", ()=>{
+  const raw = document.getElementById("keywords").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  const settings = {
+    keywords: raw,
+    useRegex: document.getElementById("useRegex").checked,
+    blockByTitle: document.getElementById("blockTitle").checked,
+    blockByChannel: document.getElementById("blockChannel").checked,
+    blockByDescription: document.getElementById("blockDesc").checked,
+    enabled: document.getElementById("enabled").checked
+  };
+  saveSettings(settings, ()=> {
+    // trigger content scripts by executing a no-op script in youtube tabs
+    chrome.tabs.query({url: "*://www.youtube.com/*"}, (tabs) => {
+      for(const t of tabs){
+        chrome.scripting.executeScript({target:{tabId: t.id}, func: ()=>{}});
       }
     });
-  }
+    window.close();
+  });
 });
+
+document.getElementById("reset").addEventListener("click", ()=>{
+  if(!confirm("Reset to built-in defaults?")) return;
+  saveSettings(DEFAULTS, ()=> { populate(); window.close(); });
+});
+
+document.getElementById("undo").addEventListener("click", ()=>{
+  // send message to active youtube tab to undo last hidden
+  chrome.tabs.query({active:true,currentWindow:true,url:"*://www.youtube.com/*"}, (tabs) => {
+    if(!tabs || !tabs.length) { alert("Open a YouTube tab to undo."); return; }
+    chrome.tabs.sendMessage(tabs[0].id, {type:"undo", count:1}, (res) => {
+      window.close();
+    });
+  });
+});
+
+document.getElementById("export").addEventListener("click", ()=>{
+  chrome.runtime.sendMessage({type: "exportKeywords"}, (res) => {
+    // background will respond by fetching storage or we can fetch directly
+    chrome.storage.sync.get(Object.keys(DEFAULTS), (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Anti-FactoryTube-keywords.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  });
+});
+
+const importFile = document.getElementById("importFile");
+document.getElementById("importBtn").addEventListener("click", ()=> importFile.click());
+importFile.addEventListener("change", (ev) => {
+  const f = ev.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const obj = JSON.parse(e.target.result);
+      // basic validation
+      const allowKeys = ["keywords","blockByTitle","blockByChannel","blockByDescription","enabled","useRegex"];
+      const payload = {};
+      for(const k of allowKeys){
+        if(obj[k] !== undefined) payload[k] = obj[k];
+      }
+      chrome.runtime.sendMessage({type:"importKeywords", value: payload}, (res) => {
+        populate();
+        window.close();
+      });
+    }catch(err){
+      alert("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(f);
+});
+
+populate();
